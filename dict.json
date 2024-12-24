@@ -1,0 +1,54 @@
+[
+    {
+        "name": "fuck",
+        "immediate": false,
+        "payload":
+###
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    la a0, str_fuck
+    call rom_printf
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+###;
+    },
+
+    {
+        "name": "bye",
+        "immediate": false,
+        "payload":
+###
+    addi sp, sp, -24
+    li t0, 13
+    sw t0, 20(sp)
+    li t0, 10
+    sw t0, 16(sp)
+    li t0, '!'
+    sw t0, 12(sp)
+    li t0, 'e'
+    sw t0, 8(sp)
+    li t0, 'y'
+    sw t0, 4(sp)
+    li t0, 'b'
+    sw t0, 0(sp)
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    la t0, word_emit
+    jalr ra, 8(t0)
+    la t0, word_emit
+    jalr ra, 8(t0)
+    la t0, word_emit
+    jalr ra, 8(t0)
+    la t0, word_emit
+    jalr ra, 8(t0)
+    la t0, word_emit
+    jalr ra, 8(t0)
+    la t0, word_emit
+    jalr ra, 8(t0)
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+###;
+    }
+]
