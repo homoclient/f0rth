@@ -15,11 +15,16 @@ if __name__=="__main__":
     name_label_last = ""
     for i, content in enumerate(dict):
         name = content["name"]
-        name_label = "word_" + name
+        name_label = "word_"
+        for c in name:
+            if c in " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~":
+                name_label = name_label + hex(ord(c)) + "_"
+            else:
+                name_label = name_label + c
         name_length = len(name)
         payload = content["payload"]
         res.write(".balign 4\n")
-        res.write(".ascii " + name + "\n")
+        res.write(".ascii " + "\"" + name + "\"" + "\n")
         res.write(".balign 4\n")
         res.write(name_label + ":\n")
         res.write(".word " + (name_label_last if len(name_label_last) > 0 else "0") + "\n")

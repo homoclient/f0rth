@@ -1,6 +1,6 @@
 #include "registers.inc"
 
-.global _start
+.global _start, addr_pst_top, addr_rst_top
 
 .section .text.init
 
@@ -20,7 +20,7 @@ _start:
     li a0, 1
     call set_cpu_freq
     la sp, parameter_stack_top
-    la t0, return_stack_top
+    la tp, return_stack_top
 cli_loop:
     call cli_read
     beqz a0, cli_idle
@@ -28,26 +28,32 @@ cli_loop:
     mv s0, a1
     la a0, cli_buffer
     call nputs
+    call put_space
     call search_word
     beqz a0, cli_parse_number
     jalr ra, 8(a0)
-    la a0, str_word_ok
+    la a0, str_ok
     li a1, 4
     call nputs
+    call put_newline
     j cli_idle
 cli_parse_number:
     mv a1, s0
     la a0, cli_buffer
     call parse_number
     beqz a0, cli_not_a_number
-    la a0, str_is_number
-    li a1, 14
+    addi sp, sp, -4
+    sw a1, 0(sp)
+    la a0, str_ok
+    li a1, 3
     call nputs
+    call put_newline
     j cli_idle
 cli_not_a_number:
     la a0, str_unknown
-    li a1, 29
+    li a1, 31
     call nputs
+    call put_newline
 cli_idle:
     li a0, 10
     call delay_ms
@@ -81,26 +87,45 @@ nputs_loop:
     sw t0, 0(t1)
     addi a1, a1, -1
     beqz a1, nputs_finish
+    addi a0, a0, 1
+    j nputs_loop
 nputs_finish:
     mv a0, t2
     mv a1, t3
     ret
 
+put_newline:
+    la t1, UART0_FIFO_REG
+    li t0, 13
+    sw t0, 0(t1)
+    li t0, 10
+    sw t0, 0(t1)
+    ret
+
+put_space:
+    la t1, UART0_FIFO_REG
+    li t0, 32
+    sw t0, 0(t1)
+    ret
+
 .data
 .balign 4
-str_word_ok:
-.ascii " ok\n"
+addr_pst:
+.word parameter_stack_top
+addr_rst:
+.word return_stack_top
+str_ok:
+.ascii " ok"
 .balign 4
 str_unknown:
-.ascii " is not a word nor a number\n"
+.ascii " is neither a word nor a number"
 .balign 4
-str_is_number:
-.ascii " is a number\n"
 
 .bss
-parameter_stack_bottom:
-.space 0x400
-parameter_stack_top:
+.balign 4
 return_stack_bottom:
 .space 0x400
 return_stack_top:
+parameter_stack_bottom:
+.space 0x400
+parameter_stack_top:

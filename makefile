@@ -4,7 +4,10 @@ LDFLAGS = -T esp32c3.ld
 SRCS = interrupts.S ivectors.S start.S wdt.S systimer.S uart_utils.S cli.c kernel.S
 PORT = COM3
 
-a.elf: $(SRCS)
+dict.txt: dict.json
+	python gendict.py
+
+a.elf: $(SRCS) dict.txt
 	$(CC) $(CFLAGS) $(SRCS) $(LDFLAGS) -o $@
 
 a.e2i: a.elf
