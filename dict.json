@@ -6,8 +6,13 @@
 ###
     addi tp, tp, -4
     sw ra, 0(tp)
-    la a0, str_fuck
-    call rom_printf
+    addi sp, sp, -8
+    la t0, str_fuck
+    li t1, 5
+    sw t0, 4(sp)
+    sw t1, 0(sp)
+    la t0, word_type
+    jalr ra, 8(t0)
     lw ra, 0(tp)
     addi tp, tp, 4
     ret
@@ -35,6 +40,298 @@
     lw t1, 4(sp)
     sw t1, 0(t0)
     addi sp, sp, 8
+    ret
+###;
+    },
+
+    {
+        "name": ".",
+        "immediate": false,
+        "payload":
+###
+    addi sp, sp, -4
+    la t0, forth_digits_buffer
+    sw t0, 0(sp)
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    la t0, word_n2str
+    jalr ra, 8(t0)
+    la t0, word_type
+    jalr ra, 8(t0)
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+###;
+    },
+
+    {
+        "name": "type",
+        "immediate": false,
+        "payload":
+###
+# ( c-addr u -- )
+    lw t1, 0(sp)
+    beqz t1, type_len0
+    lw t0, 4(sp)
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    la t2, word_emit
+type_loop:
+    lb t3, 0(t0)
+    addi sp, sp, -12
+    sw t0, 0(sp)
+    sw t1, 4(sp)
+    sw t2, 8(sp)
+    addi sp, sp, -4
+    sw t3, 0(sp)
+    jalr ra, 8(t2)
+    lw t0, 0(sp)
+    lw t1, 4(sp)
+    lw t2, 8(sp)
+    addi sp, sp, 12
+    addi t1, t1, -1
+    addi t0, t0, 1
+    bnez t1, type_loop
+    lw ra, 0(tp)
+    addi tp, tp, 4
+type_len0:
+    addi sp, sp, 8
+    ret
+###;
+    },
+
+    {
+        "name": "n2str",
+        "immediate": false,
+        "payload":
+###
+# ( n c-addr -- c-addr u )
+    lw t0, 4(sp) // n
+    lw t1, 0(sp) // c-addr
+    bgez t0, n2str_non_negative
+    li t2, '-'
+    sb t2, 0(t1)
+    addi t1, t1, 1
+    addi t0, t0, -1
+    xori t0, t0, -1
+n2str_non_negative:
+    li t2, 0
+    la t3, forth_base
+    lw t3, 0(t3)
+n2str_loop_div: // t0: n t1: addr t2: len t3: base
+    div t4, t0, t3
+    rem t5, t0, t3
+    addi t5, t5, 48
+    slti t6, t5, 58
+    addi t6, t6, -1
+    andi t6, t6, 7
+    add t5, t5, t6
+    addi sp, sp, -4
+    sw t5, 0(sp)
+    addi t2, t2, 1
+    mv t0, t4
+    bnez t0, n2str_loop_div
+    mv t4, t2
+    lw t3, 4(sp)
+    sltz t3, t3
+    li t3, 1
+    add t4, t3, t4
+n2str_loop_put:
+    lw t3, 0(sp)
+    sw t3, 0(t1)
+    addi sp, sp, 4
+    addi t2, t2, -1
+    addi t1, t1, 1
+    bnez t2, n2str_loop_put
+    sub t1, t1, t4
+    sw t1, 4(sp)
+    sw t4, 0(sp)
+    ret
+###;
+    },
+
+    {
+        "name": "find",
+        "immediate": false,
+        "payload":
+###
+# ( c-addr u -- c-addr 0 | xt 1 | xt -1 )
+    lw t0, 4(sp)
+    lw t1, 0(sp)
+    la t2, dict
+    lw t2, 0(t2)
+find_word_loop: // t0: c-addr t1: len t2: dict_addr
+    lw t3, 4(t2)
+    andi t3, t3, 255
+    bne t1, t3, find_word_len_neq
+    andi t4, t3, -4
+    slt t5, t4, t3
+    slli t5, t5, 2
+    add t4, t4, t5
+    sub t3, t2, t4
+find_word_byte_loop:
+    lb t4, 0(t0)
+    lb t5, 0(t3)
+    bne t4, t5, find_word_cmp_fail
+    addi t1, t1, -1
+    beqz t1, find_word_found
+    addi t0, t0, 1
+    addi t3, t3, 1
+    j find_word_byte_loop
+find_word_len_neq:
+find_word_cmp_fail: // fetch next dict word
+    lw t2, 0(t2)
+    beqz t2, find_give_up
+    lw t0, 4(sp)
+    lw t1, 0(sp)
+    j find_word_loop
+find_give_up:
+    li t0, 0
+    sw t0, 0(sp)
+    ret
+find_word_found:
+    sw t2, 4(sp)
+    lw t0, 4(t2)
+    sgtz t0, t0
+    slli t0, t0, 1
+    addi t0, t0, -1
+    sw t0, 0(sp)
+    ret
+###;
+    },
+
+    {
+        "name": ">n",
+        "immediate": false,
+        "payload":
+###
+# ( c-addr u -- n u )
+    lw t0, 4(sp)
+    lw t1, 0(sp)
+    li t3, 0
+    lb t4, 0(t0)
+    li t2, '%'
+    beq t4, t2, parse_n_base_is_2
+    li t2, '#'
+    beq t4, t2, parse_n_base_is_10
+    li t2, '$'
+    beq t4, t2, parse_n_base_is_16
+    la t2, forth_base
+    lw t2, 0(t2)
+    j parse_n_check_sign
+parse_n_base_is_2:
+    li t2, 2
+    j parse_n_base_found
+parse_n_base_is_10:
+    li t2, 10
+    j parse_n_base_found
+parse_n_base_is_16:
+    li t2, 16
+parse_n_base_found:
+    addi t1, t1, -1
+    blez t1, parse_n_fail
+    addi t0, t0, 1
+    lb t1, 0(t0)
+parse_n_check_sign:
+    li t5, '-'
+    bne t4, t5, parse_n_positive
+    li t5, -1
+    addi t1, t1, -1
+    blez t1, parse_n_fail
+    addi t0, t0, 1
+    lb t4, 0(t0)
+    j parse_n_loop
+parse_n_positive:
+    li t5, 1
+parse_n_loop: // t0: addr t1: len t2: base t3: n t4: char t5: sign
+    li t6, 'z'
+    bgt t4, t6, parse_n_fail
+    li t6, 'a'
+    blt t4, t6, parse_n_loop_below_a
+    addi t4, t4, -87
+    j parse_n_loop_check_digit
+parse_n_loop_below_a:
+    li t6, 'A'
+    blt t4, t6, parse_n_loop_below_A
+    addi t4, t4, -55
+    j parse_n_loop_check_digit
+parse_n_loop_below_A:
+    li t6, '0'
+    blt t4, t6, parse_n_fail
+    addi t4, t4, -48
+parse_n_loop_check_digit:
+    bge t4, t2, parse_n_fail
+    add t3, t3, t4
+    addi t1, t1, -1
+    blez t1, parse_n_result
+    mul t3, t3, t2
+    addi t0, t0, 1
+    lb t4, 0(t0)
+    j parse_n_loop
+parse_n_result:
+    mul t3, t3, t5
+parse_n_fail:
+    sw t3, 4(sp)
+    lw t0, 0(sp)
+    sub t0, t0, t1
+    sw t0, 0(sp)
+    ret
+###;
+    },
+        
+    {
+        "name": "execute",
+        "immediate": false,
+        "payload":
+###
+    lw t0, 0(sp)
+    addi sp, sp, 4
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    jalr ra, 8(t0)
+    lw ra, 0(tp)
+    ret
+###;
+    },
+
+    {
+        "name": "str1",
+        "immediate": false,
+        "payload":
+###
+    la t0, str_test1
+    la t1, 5
+    addi sp, sp, -8
+    sw t0, 4(sp)
+    sw t1, 0(sp)
+    ret
+###;
+    },
+
+    {
+        "name": "str2",
+        "immediate": false,
+        "payload":
+###
+    la t0, str_test2
+    la t1, 4
+    addi sp, sp, -8
+    sw t0, 4(sp)
+    sw t1, 0(sp)
+    ret
+###;
+    },
+
+    {
+        "name": "str3",
+        "immediate": false,
+        "payload":
+###
+    la t0, str_test3
+    la t1, 6
+    addi sp, sp, -8
+    sw t0, 4(sp)
+    sw t1, 0(sp)
     ret
 ###;
     },

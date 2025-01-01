@@ -131,126 +131,28 @@ push_number:
 
 #include "dict.txt"
 
-//.balign 4
-//.ascii "base"
-//.balign 4
-//word_base:
-//.word 0
-//.word 4
-//    la t0, forth_base
-//    addi sp, sp, -4
-//    sw t0, 0(sp)
-//    ret
-//
-//.balign 4
-//.ascii "emit"
-//.balign 4
-//word_emit:
-//.word word_base
-//.word 4
-//    la t0, UART0_FIFO_REG
-//    lw t1, 0(sp)
-//    addi sp, sp, 4
-//    sw t1, 0(t0)
-//    ret
-//
-//.balign 4
-//.ascii "hello"
-//.balign 4
-//word_hello:
-//.word word_emit
-//.word 5
-//    addi tp, tp, -4
-//    sw ra, 0(tp)
-//    la a0, str_hello
-//    call rom_printf
-//    lw ra, 0(tp)
-//    addi tp, tp, 4
-//    ret
-//str_hello:
-//.asciz "hello!\n"
-//
-//.balign 4
-//.ascii "fuck"
-//.balign 4
-//word_fuck:
-//.word word_hello
-//.word 4
-//    addi tp, tp, -4
-//    sw ra, 0(tp)
-//    la a0, str_fuck
-//    call rom_printf
-//    lw ra, 0(tp)
-//    addi tp, tp, 4
-//    ret
-//str_fuck:
-//.asciz "fuck!\n"
-//
-//.balign 4
-//.ascii "shit_with_long_name"
-//.balign 4
-//word_shit_with_long_name:
-//.word word_fuck
-//.word 19
-//    addi tp, tp, -4
-//    sw ra, 0(tp)
-//    la a0, str_shit
-//    call rom_printf
-//    lw ra, 0(tp)
-//    addi tp, tp, 4
-//    ret
-//str_shit:
-//.asciz "piece of shit with long name\n"
-//
-//.balign 4
-//.ascii "bye"
-//.balign 4
-//word_bye:
-//.word word_shit_with_long_name
-//.word 3
-//    addi sp, sp, -24
-//    li t0, 13
-//    sw t0, 20(sp)
-//    li t0, 10
-//    sw t0, 16(sp)
-//    li t0, '!'
-//    sw t0, 12(sp)
-//    li t0, 'e'
-//    sw t0, 8(sp)
-//    li t0, 'y'
-//    sw t0, 4(sp)
-//    li t0, 'b'
-//    sw t0, 0(sp)
-//    addi tp, tp, -4
-//    sw ra, 0(tp)
-//    la t0, word_emit
-//    jalr ra, 8(t0)
-//    la t0, word_emit
-//    jalr ra, 8(t0)
-//    la t0, word_emit
-//    jalr ra, 8(t0)
-//    la t0, word_emit
-//    jalr ra, 8(t0)
-//    la t0, word_emit
-//    jalr ra, 8(t0)
-//    la t0, word_emit
-//    jalr ra, 8(t0)
-//    lw ra, 0(tp)
-//    addi tp, tp, 4
-//    ret
-
 .option relax
 
 .data
 .balign 4
 dict:
 .word word_bye
+forth_state:
+.word 0
 forth_base:
 .word 10
 str_fuck:
-.asciz "fuck!"
+.ascii "fuck!"
+str_test1:
+.ascii "12345"
+str_test2:
+.ascii "fuck"
+str_test3:
+.ascii "-12345"
 
 .bss
 .balign 4
-name_buffer:
+forth_digits_buffer:
+.space 64
+forth_text_input_buffer:
 .space 256
