@@ -65,6 +65,28 @@
     },
 
     {
+        "name": "cr",
+        "immediate": false,
+        "payload":
+###
+    li t0, 13
+    li t1, 10
+    addi sp, sp, -8
+    sw t0, 0(sp)
+    sw t1, 4(sp)
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    la t0, word_emit
+    jalr ra, 8(t0)
+    la t0, word_emit
+    jalr ra, 8(t0)
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+###;
+    },
+
+    {
         "name": "type",
         "immediate": false,
         "payload":
@@ -131,21 +153,193 @@ n2str_loop_div: // t0: n t1: addr t2: len t3: base
     addi t2, t2, 1
     mv t0, t4
     bnez t0, n2str_loop_div
-    mv t4, t2
-    lw t3, 4(sp)
-    sltz t3, t3
-    li t3, 1
-    add t4, t3, t4
 n2str_loop_put:
     lw t3, 0(sp)
-    sw t3, 0(t1)
+    sb t3, 0(t1)
     addi sp, sp, 4
     addi t2, t2, -1
     addi t1, t1, 1
     bnez t2, n2str_loop_put
+    lw t4, 0(sp)
+    lw t3, 4(sp)
     sub t1, t1, t4
+    lw t0, 0(sp)
+    sw t0, 4(sp)
+    sw t1, 0(sp)
+    ret
+###;
+    },
+
+    {
+        "name": "quit",
+        "immediate": false,
+        "payload":
+###
+# ( -- )
+    la t0, forth_interpreter_input_buffer
+    li t1, 256
+    addi sp, sp, -12
+    sw t0, 8(sp)
+    sw t0, 4(sp)
+    sw t1, 0(sp)
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    la t0, word_accept
+    jalr ra, 8(t0)
+quit_loop:
+    la t0, word_get_token
+    jalr ra, 8(t0)
+    lw t1, 0(sp)
+    blez t1, quit_end
+    lw t0, 0(sp)
+    lw t1, 4(sp)
+    addi sp, sp, -8
+    sw t0, 0(sp)
     sw t1, 4(sp)
-    sw t4, 0(sp)
+    la t0, word_find
+    jalr ra, 8(t0)
+    lw t0, 0(sp)
+    bnez t0, quit_loop_is_word
+    lw t1, 8(sp)
+    sw t1, 0(sp)
+    la t0, word_0x3e_n
+    jalr ra, 8(t0)
+    lw t0, 8(sp)
+    lw t1, 4(sp)
+    lw t2, 0(sp)
+    bne t0, t2, quit_unknown
+# is number
+    la t0, forth_state
+    lw t0, 0(t0)
+    bnez t0, quit_loop_compile_number
+# push number
+    addi sp, sp, 12
+    lw t2, 4(sp)
+    lw t3, 8(sp)
+    sw t2, 0(sp)
+    sw t3, 4(sp)
+    sw t1, 8(sp)
+    j quit_loop
+quit_loop_compile_number:
+    j .
+quit_loop_is_word:
+    la t0, forth_state
+    lw t0, 0(t0)
+    lw t1, 0(sp)
+    bltz t1, quit_loop_immediate_word
+    bnez t0, quit_loop_compile_word_call
+    lw t0, 4(sp)
+    lw t1, 16(sp)
+    lw t2, 20(sp)
+    addi sp, sp, 20
+    sw t0, 0(sp)
+    addi tp, tp, -8
+    sw t1, 0(tp)
+    sw t2, 4(tp)
+    la t0, word_execute
+    jalr ra, 8(t0)
+    lw t1, 0(tp)
+    lw t2, 4(tp)
+    addi tp, tp, 8
+    addi sp, sp, -8
+    sw t1, 0(sp)
+    sw t2, 4(sp)
+    j quit_loop
+quit_loop_compile_word_call:
+    j .
+quit_loop_immediate_word:
+    lw t0, 4(sp)
+    addi sp, sp, 12
+    sw t0, 0(sp)
+    la t0, word_execute
+    jalr ra, 8(t0)
+    j quit_loop
+quit_end:
+    addi sp, sp, 16
+    la t0, forth_state
+    lw t0, 0(t0)
+    bnez t0, quit_end_compile
+    addi sp, sp, -8
+    la t0, forth_str_ok
+    li t1, 3
+    j quit_end_end
+quit_end_compile:
+    addi sp, sp, -8
+    la t0, forth_str_compiled
+    li t1, 9
+    j quit_end_end
+quit_end_end:
+    sw t1, 0(sp)
+    sw t0, 4(sp)
+    la t0, word_type
+    jalr ra, 8(t0)
+    la t0, word_cr
+    jalr ra, 8(t0)
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+quit_unknown:
+    addi sp, sp, 8
+    la t0, word_type
+    jalr ra, 8(t0)
+    la t0, forth_str_unknown
+    li t1, 31
+    sw t1, 0(sp)
+    sw t0, 4(sp)
+    la t0, word_type
+    jalr ra, 8(t0)
+    la sp, addr_pst_top
+    lw sp, 0(sp)
+    lw ra, 0(tp)
+    la tp, addr_rst_top
+    lw tp, 0(tp)
+    ret
+###;
+    },
+
+    {
+        "name": "get_token",
+        "immediate": false,
+        "payload":
+###
+# ( c-addr u -- c-addr1 u1 c-addr2 u2 )
+    lw t0, 4(sp)
+    lw t1, 0(sp)
+    li t3, 32
+get_token_discard_space:
+    blez t1, get_token_len0
+    lb t2, 0(t0)
+    bne t2, t3, get_token_discard_space_end
+    addi t0, t0, 1
+    addi t1, t1, -1
+    j get_token_discard_space
+    # t2: char t0: addr t1: u
+get_token_discard_space_end:
+    addi sp, sp, -4
+    sw t0, 0(sp)
+    addi t0, t0, 1
+    addi t1, t1, -1
+get_token_loop:
+    blez t1, get_token_end
+    lb t2, 0(t0)
+    beq t2, t3, get_token_end
+    addi t0, t0, 1
+    addi t1, t1, -1
+    j get_token_loop
+get_token_end:
+    lw t3, 0(sp)
+    sub t3, t0, t3
+    addi sp, sp, -4
+    sw t3, 0(sp)
+    sw t1, 8(sp)
+    sw t0, 12(sp)
+    ret
+get_token_len0:
+    sw t1, 0(sp)
+    sw t0, 4(sp)
+    addi sp, sp, -8
+    sw t1, 0(sp)
+    sw t0, 4(sp)
     ret
 ###;
     },
@@ -195,6 +389,19 @@ find_word_found:
     sgtz t0, t0
     slli t0, t0, 1
     addi t0, t0, -1
+    sw t0, 0(sp)
+    ret
+###;
+    },
+
+    {
+        "name": "here",
+        "immediate": false,
+        "payload":
+###
+    la t0, forth_here
+    lw t0, 0(t0)
+    addi sp, sp, -4
     sw t0, 0(sp)
     ret
 ###;
@@ -278,7 +485,99 @@ parse_n_fail:
     ret
 ###;
     },
-        
+
+    {
+        "name": "accept",
+        "immediate": false,
+        "payload":
+###
+# ( c-addr u -- u )
+    la t0, UART0_FIFO_REG
+    lw t2, 4(sp)
+    lw t6, 0(sp)
+accept_start: // t0: tx addr t2: c-addr t6: max bytes to read
+    la t1, UART0_STATUS_REG
+    lw t1, 0(t1)
+    andi t1, t1, 1023
+    beqz t1, accept_wait
+accept_loop: // t0: rx addr t1: num bytes left in rx t2: c-addr
+    lw t3, 0(t0)
+    andi t3, t3, 255
+    li t4, 127
+    bgt t3, t4, accept_next_byte
+    li t4, 32
+    bge t3, t4, accept_printable
+    li t4, 13
+    beq t3, t4, accept_finish
+    li t4, 8
+    beq t3, t4, accept_backspace
+    j accept_next_byte
+accept_backspace:
+    lw t4, 4(sp)
+    beq t2, t4, accept_next_byte
+    addi t2, t2, -1
+    li t4, 0x1b
+    sw t4, 0(t0)
+    li t4, '['
+    sw t4, 0(t0)
+    li t4, '1'
+    sw t4, 0(t0)
+    li t4, 'D'
+    sw t4, 0(t0)
+    li t4, 0x1b
+    sw t4, 0(t0)
+    li t4, '['
+    sw t4, 0(t0)
+    li t4, 'J'
+    sw t4, 0(t0)
+    addi t6, t6, 1
+    j accept_next_byte
+accept_printable:
+    sb t3, 0(t2)
+    addi t2, t2, 1
+    addi t6, t6, -1
+    sw t3, 0(t0)
+    blez t6, accept_finish
+accept_next_byte:
+    addi t1, t1, -1
+    blez t1, accept_wait
+    j accept_loop
+accept_finish:
+    lw t0, 4(sp)
+    sub t1, t2, t0
+    addi sp, sp, 4
+    sw t1, 0(sp)
+    addi sp, sp, -4
+    li t0, 32
+    sw t0, 0(sp)
+    la t0, word_emit
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    jalr ra, 8(t0)
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+accept_wait:
+    li t4, 65536
+accept_wait_loop:
+    addi t4, t4, -1
+    bgtz t4, accept_wait_loop
+    j accept_start
+###;
+    },
+
+    {
+        "name": "state",
+        "immediate": false,
+        "payload":
+###
+    la t0, forth_state
+    addi sp, sp, -4
+    sw t0, 0(sp)
+    ret
+###;
+    },
+
     {
         "name": "execute",
         "immediate": false,
@@ -290,6 +589,7 @@ parse_n_fail:
     sw ra, 0(tp)
     jalr ra, 8(t0)
     lw ra, 0(tp)
+    addi tp, tp, 4
     ret
 ###;
     },
@@ -300,7 +600,7 @@ parse_n_fail:
         "payload":
 ###
     la t0, str_test1
-    la t1, 5
+    la t1, 20
     addi sp, sp, -8
     sw t0, 4(sp)
     sw t1, 0(sp)

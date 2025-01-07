@@ -1,7 +1,7 @@
 CC = riscv-none-elf-gcc
 CFLAGS = -nostdlib -march=rv32imc_zicsr -mabi=ilp32 -g -Os
 LDFLAGS = -T esp32c3.ld
-SRCS = interrupts.S ivectors.S start.S wdt.S systimer.S uart_utils.S cli.c kernel.S
+SRCS = interrupts.S ivectors.S start.S wdt.S systimer.S kernel.S
 PORT = COM3
 
 dict.txt: dict.json
@@ -17,4 +17,4 @@ flash: a.e2i
 	esptool -p $(PORT) --chip esp32c3 write_flash 0x0 a.e2i
 
 clean:
-	rm a.elf a.e2i
+	rm a.elf a.e2i dict.txt

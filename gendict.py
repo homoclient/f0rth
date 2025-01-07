@@ -17,7 +17,7 @@ if __name__=="__main__":
         name = content["name"]
         name_label = "word_"
         for c in name:
-            if c in " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~":
+            if c in " !\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~":
                 name_label = name_label + hex(ord(c)) + "_"
             else:
                 name_label = name_label + c
