@@ -11,10 +11,255 @@
     li t1, 5
     sw t0, 4(sp)
     sw t1, 0(sp)
-    la t0, word_type
-    jalr ra, 8(t0)
+    CALL_WORD word_type
     lw ra, 0(tp)
     addi tp, tp, 4
+    ret
+###;
+    },
+
+    {
+        "name": "rv32c_push_imm",
+        "immediate": false,
+        "payload":
+###
+# ( n -- i*x u )
+    lw t6, 0(sp)
+    bnez t6, rv32c_push_imm_cli
+    addi sp, sp, -8
+    li t0, 0xc002
+    li t1, 0x1171
+    li t2, 2
+    sw t2, 0(sp)
+    sw t1, 4(sp)
+    sw t0, 8(sp)
+    ret
+rv32c_push_imm_cli:
+    li t0, 31
+    bgt t6, t0, rv32c_push_imm_addi_only
+    li t0, -32
+    blt t6, t0, rv32c_push_imm_addi_only
+    andi t0, t6, 0x3f
+    andi t1, t0, 0x20
+    andi t0, t0, 0x1f
+    slli t1, t1, 7
+    slli t0, t0, 2
+    or t0, t0, t1
+    li t2, 0x4281
+    or t0, t0, t2
+    addi sp, sp, -12
+    li t1, 3
+    li t2, 0x1171
+    li t3, 0xc016
+    sw t1, 0(sp)
+    sw t0, 4(sp)
+    sw t2, 8(sp)
+    sw t3, 12(sp)
+    ret
+rv32c_push_imm_addi_only:
+    li t0, 2047
+    bgt t6, t0, rv32c_push_imm_clui
+    li t0, -2048
+    blt t6, t0, rv32c_push_imm_clui
+    li t1, 0x293
+    slli t0, t6, 20
+    or t0, t0, t1
+    li t1, 3
+    li t2, 0x1171
+    li t3, 0xc016
+    addi sp, sp, -12
+    sw t1, 0(sp)
+    sw t0, 4(sp)
+    sw t2, 8(sp)
+    sw t3, 12(sp)
+    ret
+rv32c_push_imm_clui:
+    li t5, 0x800
+    and t5, t6, t5
+    slli t5, t5, 1
+    li t0, 129023
+    bgt t6, t0, rv32c_push_imm_lui
+    li t0, -133120
+    blt t6, t0, rv32c_push_imm_lui
+    li t0, 0x3f000
+    and t0, t6, t0
+    add t0, t0, t5
+    srli t1, t0, 10
+    andi t2, t1, 0x80
+    slli t2, t2, 5
+    li t0, 0x6281
+    or t0, t0, t1
+    or t4, t0, t2 #t4: c.lui
+    bnez t5, rv32c_push_imm_caddi_n
+    j rv32c_push_imm_caddi
+rv32c_push_imm_lui:
+    li t0, 0xfffff000
+    and t0, t6, t0
+    add t0, t0, t5
+    li t4, 0x2b7
+    or t4, t0, t4 #t4: lui
+    bnez t5, rv32c_push_imm_caddi_n
+    j rv32c_push_imm_caddi
+rv32c_push_imm_caddi: # t4: lui
+    li t0, 0xfff
+    and t0, t6, t0
+    bnez t0, rv32c_push_imm_caddi_nz
+    addi sp, sp, -12
+    li t1, 3
+    li t2, 0x1171
+    li t3, 0xc016
+    sw t1, 0(sp)
+    sw t2, 4(sp) #addi sp, sp, -4
+    sw t4, 8(sp) #lui t0, [nzimm]
+    sw t3, 12(sp) #sw t0, 0(sp)
+    ret
+rv32c_push_imm_caddi_nz:
+    li t1, 31
+    bgt t0, t1, rv32c_push_imm_addi
+    andi t1, t0, 0x1f
+    andi t2, t0, 0x20
+    slli t1, t1, 2
+    slli t2, t2, 7
+    li t0, 0x0281
+    or t0, t0, t1
+    or t5, t0, t2
+    j rv32c_push_imm_addi_end
+rv32c_push_imm_addi:
+    li t1, 0x28293
+    slli t0, t0, 20
+    or t5, t0, t1
+    j rv32c_push_imm_addi_end
+rv32c_push_imm_caddi_n: # t4: lui
+    li t1, 0x1000
+    sub t0, t0, t1
+    li t1, -32
+    blt t0, t1, rv32c_push_imm_addi_n
+    andi t1, t0, 0x1f
+    andi t2, t0, 0x20
+    slli t1, t1, 2
+    slli t2, t2, 7
+    li t0, 0x0281
+    or t0, t0, t1
+    or t5, t0, t2
+    j rv32c_push_imm_addi_end
+rv32c_push_imm_addi_n:
+    li t1, 0xfff
+    and t0, t0, t1
+    li t1, 0x28293
+    slli t0, t0, 20
+    or t5, t0, t1
+    j rv32c_push_imm_addi_end
+rv32c_push_imm_addi_end: # t4: lui t5: addi
+    li t0, 4
+    li t1, 0x1171
+    li t2, 0xc016
+    addi sp, sp, -16
+    sw t0, 0(sp)
+    sw t1, 4(sp) #addi sp, sp, -4
+    sw t4, 8(sp) #lui t0, [nzimm]
+    sw t5, 12(sp) #addi t0, [nzimm]
+    sw t2, 16(sp) #sw t0, 0(sp)
+    ret
+###;
+    },
+
+    {
+        "name": "rv32c_jump",
+        "immediate": false,
+        "payload":
+###
+    j .
+###;
+    },
+
+    {
+        "name": "aligned",
+        "immediate": false,
+        "payload":
+###
+    lw t0, 0(sp)
+    andi t1, t0, -4
+    sltu t2, t1, t0
+    slli t2, t2, 2
+    add t1, t1, t2
+    sw t1, 0(sp)
+    ret
+###;
+    },
+
+    {
+        "name": "align",
+        "immediate": false,
+        "payload":
+###
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    CALL_WORD word_here
+    CALL_WORD word_aligned
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    lw t0, 0(sp)
+    addi sp, sp, 4
+    la t1, forth_here
+    sw t0, 0(t1)
+    ret
+###;
+    },
+
+    {
+        "name": "insn,",
+        "immediate": false,
+        "payload":
+###
+    lw t0, 0(sp)
+    addi sp, sp, 4
+    la t6, forth_here
+    lw t5, 0(t6)
+    sh t0, 0(t5)
+    addi t5, t5, 2
+    andi t1, t0, 3
+    li t2, 3
+    beq t1, t2, insn0x2c_32bit
+    j insn0x2c_end
+insn0x2c_32bit:
+    srli t0, t0, 16
+    sh t0, 0(t5)
+    addi t5, t5, 2
+    j insn0x2c_end
+insn0x2c_end:
+    sw t5, 0(t6)
+    ret
+###;
+    },
+
+    {
+        "name": "c,",
+        "immediate": false,
+        "payload":
+###
+    lw t0, 0(sp)
+    addi sp, sp, 4
+    la t6, forth_here
+    lw t5, 0(t6)
+    sb t0, 0(t5)
+    addi t5, t5, 1
+    sw t5, 0(t6)
+    ret
+###;
+    },
+
+    {
+        "name": ",",
+        "immediate": false,
+        "payload":
+###
+    lw t0, 0(sp)
+    addi sp, sp, 4
+    la t1, forth_here
+    lw t2, 0(t1)
+    sw t0, 0(t2)
+    addi t2, t2, 4
+    sw t2, 0(t1)
     ret
 ###;
     },
@@ -54,10 +299,8 @@
     sw t0, 0(sp)
     addi tp, tp, -4
     sw ra, 0(tp)
-    la t0, word_n2str
-    jalr ra, 8(t0)
-    la t0, word_type
-    jalr ra, 8(t0)
+    CALL_WORD word_n2str
+    CALL_WORD word_type
     lw ra, 0(tp)
     addi tp, tp, 4
     ret
@@ -76,10 +319,8 @@
     sw t1, 4(sp)
     addi tp, tp, -4
     sw ra, 0(tp)
-    la t0, word_emit
-    jalr ra, 8(t0)
-    la t0, word_emit
-    jalr ra, 8(t0)
+    CALL_WORD word_emit
+    CALL_WORD word_emit
     lw ra, 0(tp)
     addi tp, tp, 4
     ret
@@ -97,7 +338,6 @@
     lw t0, 4(sp)
     addi tp, tp, -4
     sw ra, 0(tp)
-    la t2, word_emit
 type_loop:
     lb t3, 0(t0)
     addi sp, sp, -12
@@ -106,7 +346,7 @@ type_loop:
     sw t2, 8(sp)
     addi sp, sp, -4
     sw t3, 0(sp)
-    jalr ra, 8(t2)
+    CALL_WORD word_emit
     lw t0, 0(sp)
     lw t1, 4(sp)
     lw t2, 8(sp)
@@ -171,6 +411,131 @@ n2str_loop_put:
     },
 
     {
+        "name": "write_word_header",
+        "immediate": false,
+        "payload":
+###
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    CALL_WORD word_align
+    lw t0, 0(sp)
+    lw t1, 4(sp)
+    addi sp, sp, 4
+    sw t0, 0(sp)
+    la t6, forth_here
+    lw t2, 0(t6)
+    beqz t0, write_word_header_noname
+write_word_header_loop:
+    lb t3, 0(t1)
+    sb t3, 0(t2)
+    addi t0, t0, -1
+    addi t1, t1, 1
+    addi t2, t2, 1
+    bgtz t0, write_word_header_loop
+    sw t2, 0(t6)
+    CALL_WORD word_align
+write_word_header_noname:
+    la t0, forth_dict
+    lw t0, 0(t0)
+    addi sp, sp, -4
+    sw t0, 0(sp)
+    CALL_WORD word_0x2c_
+    CALL_WORD word_0x2c_
+write_word_header_end:
+    la t0, forth_here
+    lw t0, 0(t0)
+    addi t0, t0, -8
+    li t1, 0x700000
+    add t0, t0, t1
+    addi sp, sp, -4
+    sw t0, 0(sp)
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+###;
+    },
+
+    {
+        "name": ":",
+        "immediate": true,
+        "payload":
+###
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    CALL_WORD word_state
+    lw t0, 0(sp)
+    lw t1, 0(t0)
+    addi sp, sp, 4
+    bnez t1, _0x3a_inside_definition
+    li t1, 1
+    sw t1, 0(t0)
+    CALL_WORD word_get_token
+    lw t0, 0(sp)
+    blez t0, _0x3a_name_empty
+    CALL_WORD word_write_word_header
+    lw t0, 0(sp)
+    la t1, forth_dict_editing
+    sw t0, 0(t1)
+    addi sp, sp, 4
+_0x3a_name_empty:
+_0x3a_inside_definition:
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+###;
+    },
+
+    {
+        "name": ";",
+        "immediate": true,
+        "payload":
+###
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    la t0, forth_dict_editing
+    lw t0, 0(t0)
+    bgtz t0, _0x3b_named_word
+    slli t0, t0, 1
+    srli t0, t0, 1
+    addi sp, sp, -4
+    sw t0, 0(sp)
+_0x3b_named_word:
+    la t1, forth_dict
+    sw t0, 0(t1)
+    li t0, 0x8082 # ret
+    addi sp, sp, -4
+    sw t0, 0(sp)
+    CALL_WORD word_insn0x2c_
+    CALL_WORD word_align
+    la t0, forth_state
+    li t1, 0
+    sw t1, 0(t0)
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+###;
+    },
+
+    {
+        "name": "imm",
+        "immediate": true,
+        "payload":
+###
+    addi tp, tp, -4
+    sw ra, 0(tp)
+    lw t0, 0(sp)
+    lw t1, 4(sp)
+    addi sp, sp, -8
+    sw t0, 0(sp)
+    sw t1, 4(sp)
+    CALL_WORD word_type
+    lw ra, 0(tp)
+    addi tp, tp, 4
+    ret
+###;
+    },
+
+    {
         "name": "quit",
         "immediate": false,
         "payload":
@@ -184,11 +549,9 @@ n2str_loop_put:
     sw t1, 0(sp)
     addi tp, tp, -4
     sw ra, 0(tp)
-    la t0, word_accept
-    jalr ra, 8(t0)
+    CALL_WORD word_accept
 quit_loop:
-    la t0, word_get_token
-    jalr ra, 8(t0)
+    CALL_WORD word_get_token
     lw t1, 0(sp)
     blez t1, quit_end
     lw t0, 0(sp)
@@ -196,14 +559,12 @@ quit_loop:
     addi sp, sp, -8
     sw t0, 0(sp)
     sw t1, 4(sp)
-    la t0, word_find
-    jalr ra, 8(t0)
+    CALL_WORD word_find
     lw t0, 0(sp)
     bnez t0, quit_loop_is_word
     lw t1, 8(sp)
     sw t1, 0(sp)
-    la t0, word_0x3e_n
-    jalr ra, 8(t0)
+    CALL_WORD word_0x3e_n
     lw t0, 8(sp)
     lw t1, 4(sp)
     lw t2, 0(sp)
@@ -221,7 +582,21 @@ quit_loop:
     sw t1, 8(sp)
     j quit_loop
 quit_loop_compile_number:
-    j .
+    addi sp, sp, 12
+    sw t1, 0(sp)
+    CALL_WORD word_rv32c_push_imm
+    lw t0, 0(sp)
+    addi sp, sp, 4
+    addi tp, tp, -4
+    sw t0, 0(tp)
+quit_loop_compile_number_loop:
+    CALL_WORD word_insn0x2c_
+    lw t0, 0(tp)
+    addi t0, t0, -1
+    sw t0, 0(tp)
+    bgtz t0, quit_loop_compile_number_loop
+    addi tp, tp, 4
+    j quit_loop
 quit_loop_is_word:
     la t0, forth_state
     lw t0, 0(t0)
@@ -236,8 +611,7 @@ quit_loop_is_word:
     addi tp, tp, -8
     sw t1, 0(tp)
     sw t2, 4(tp)
-    la t0, word_execute
-    jalr ra, 8(t0)
+    CALL_WORD word_execute
     lw t1, 0(tp)
     lw t2, 4(tp)
     addi tp, tp, 8
@@ -246,13 +620,13 @@ quit_loop_is_word:
     sw t2, 4(sp)
     j quit_loop
 quit_loop_compile_word_call:
+    CALL_WORD word_fuck
     j .
 quit_loop_immediate_word:
     lw t0, 4(sp)
     addi sp, sp, 12
     sw t0, 0(sp)
-    la t0, word_execute
-    jalr ra, 8(t0)
+    CALL_WORD word_execute
     j quit_loop
 quit_end:
     addi sp, sp, 16
@@ -271,23 +645,20 @@ quit_end_compile:
 quit_end_end:
     sw t1, 0(sp)
     sw t0, 4(sp)
-    la t0, word_type
-    jalr ra, 8(t0)
-    la t0, word_cr
-    jalr ra, 8(t0)
+    CALL_WORD word_type
+    CALL_WORD word_cr
     lw ra, 0(tp)
     addi tp, tp, 4
     ret
 quit_unknown:
     addi sp, sp, 8
-    la t0, word_type
-    jalr ra, 8(t0)
+    CALL_WORD word_type
     la t0, forth_str_unknown
     li t1, 31
     sw t1, 0(sp)
     sw t0, 4(sp)
-    la t0, word_type
-    jalr ra, 8(t0)
+    CALL_WORD word_type
+    CALL_WORD word_cr
     la sp, addr_pst_top
     lw sp, 0(sp)
     lw ra, 0(tp)
@@ -352,7 +723,7 @@ get_token_len0:
 # ( c-addr u -- c-addr 0 | xt 1 | xt -1 )
     lw t0, 4(sp)
     lw t1, 0(sp)
-    la t2, dict
+    la t2, forth_dict
     lw t2, 0(t2)
 find_word_loop: // t0: c-addr t1: len t2: dict_addr
     lw t3, 4(t2)
@@ -550,10 +921,9 @@ accept_finish:
     addi sp, sp, -4
     li t0, 32
     sw t0, 0(sp)
-    la t0, word_emit
     addi tp, tp, -4
     sw ra, 0(tp)
-    jalr ra, 8(t0)
+    CALL_WORD word_emit
     lw ra, 0(tp)
     addi tp, tp, 4
     ret
@@ -667,9 +1037,9 @@ accept_wait_loop:
         "payload":
 ###
     addi sp, sp, -24
-    li t0, 13
-    sw t0, 20(sp)
     li t0, 10
+    sw t0, 20(sp)
+    li t0, 13
     sw t0, 16(sp)
     li t0, '!'
     sw t0, 12(sp)
@@ -681,18 +1051,10 @@ accept_wait_loop:
     sw t0, 0(sp)
     addi tp, tp, -4
     sw ra, 0(tp)
-    la t0, word_emit
-    jalr ra, 8(t0)
-    la t0, word_emit
-    jalr ra, 8(t0)
-    la t0, word_emit
-    jalr ra, 8(t0)
-    la t0, word_emit
-    jalr ra, 8(t0)
-    la t0, word_emit
-    jalr ra, 8(t0)
-    la t0, word_emit
-    jalr ra, 8(t0)
+    CALL_WORD word_emit
+    CALL_WORD word_emit
+    CALL_WORD word_emit
+    CALL_WORD word_emit
     lw ra, 0(tp)
     addi tp, tp, 4
     ret
